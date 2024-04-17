@@ -22,6 +22,7 @@
     <App>Microsoft.WindowsFeedbackHub</App>
     <App>Microsoft.PowerAutomateDesktop</App>
 	<App>MicrosoftTeams</App> <!-- Built-in Teams / chat -->
+	<App>MicrosoftCorporationII.MicrosoftFamily</App> <!-- Microsoft Family -->
 	
     <!--<App>Microsoft.BingWeather</App>-->
     <!--<App>Microsoft.DesktopAppInstaller</App>-->
