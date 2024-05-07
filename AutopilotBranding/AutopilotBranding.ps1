@@ -72,6 +72,11 @@ If(-not (Test-Path -Path $WallpaperFolder)){
 Copy-Item -Path ".\Wallpaper_Vehicle_1.png" -Destination $WallpaperFolder -Force
 
 
+Add-Log -Message "Setting default lock screen image"
+New-Item -Path 'HKLM:\Software\Policies\Microsoft\Windows\Personalization' -Force
+New-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows\Personalization' -Name 'LockScreenImage' -Value (Join-Path -Path $WallpaperFolder -ChildPath "Wallpaper_Vehicle_1.png") -PropertyType 'String' -Force
+
+
 # Load the NTUSER.DAT into HKLM\TEMP_HIVE, this can be accessed using the PSDrive TempHive
 $HiveFile = Join-Path -Path $Env:SystemDrive -ChildPath "Users\Default\NTUSER.DAT"
 Add-Log -Message "Loading default user hive: $HiveFile"
@@ -85,6 +90,7 @@ New-ItemProperty -Path 'TempHive:\SOFTWARE\Microsoft\Windows\CurrentVersion\Them
 
 Add-Log -Message "Adding default user experience options"
 New-Item -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force
+New-ItemProperty -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Explorer' -Name 'ShowFrequent' -Value 0 -Force	# Don't show frequent folders
 New-ItemProperty -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'AuthCheckSelect' -Value 1 -Force	# Show checkboxes
 New-ItemProperty -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'HideFileExt' -Value 0 -Force		# Show all file extensions
 New-ItemProperty -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarAl' -Value 0 -Force		# Align the taskbar to the left
@@ -93,7 +99,35 @@ New-ItemProperty -Path 'TempHive:\Software\Microsoft\Windows\CurrentVersion\Expl
 
 # Remove TempHive and unload the registry hive HKLM\TEMP_HIVE
 Add-Log -Message "Closing default user hive"
-Remove-RegistryHive -Name "TempHive"
+
+# Found here: https://blog.redit.name/posts/2015/powershell-loading-registry-hive-from-file.html
+# attempt Remove-RegistryHive a maximum of 3 times
+$attempt = 0
+while($true)
+{
+    try
+    {
+        # when Remove-RegistryHive is successful break will stop the loop
+        $attempt++
+        Remove-RegistryHive -Name TempHive
+        Add-Log -Message 'NTUSER.DAT updated successfully!'
+        break
+    }
+    catch
+    {
+        if ($attempt -eq 3)
+        {
+            # rethrow the exception, we gave up
+            throw
+        }
+
+        Add-Log -Message 'Remove-RegistryHive failed, trying again...'
+
+        # wait for 100ms and trigger the garbage collector
+        Start-Sleep -Milliseconds 100
+        [gc]::Collect()
+    }
+}
 
 
 # Copy default user profile pictures
